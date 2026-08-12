@@ -3,7 +3,6 @@ package dev.gaphunter.testscaffoldcompanion.generate
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
-import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.KotlinLanguage
 
@@ -36,11 +35,24 @@ object InMemoryValidator {
      * surfacing to the user as the honest "could not generate safely
      * here" outcome DEVELOPMENT_PLAN.md section 1.3 requires -- never
      * silently write text that failed this check.
+     *
+     * **Real bug found live: `PsiManager.dropPsiCaches()` requires the
+     * EDT specifically, not just a read action.** It was called here as
+     * an (unnecessary) attempt to make the freshly-created `PsiFile`
+     * "settle" before walking it -- but [PsiFileFactory.createFileFromText]
+     * already returns a fully-parsed tree; nothing needs a global
+     * cache invalidation to read a `PsiErrorElement` off a file that
+     * was never added to any project structure in the first place.
+     * Removing the call was the fix, not moving it to the EDT (that
+     * would defeat the whole point of running this off the EDT per
+     * CONSTITUTION.md section 6). Confirmed via a real `runIde` crash
+     * (`RuntimeExceptionWithAttachments: Access is allowed from Event
+     * Dispatch Thread (EDT) only`) -- see INTELLIJ_PLATFORM_KNOWLEDGE.md
+     * "Test Scaffold Companion" section for the full incident.
      */
     fun findFirstSyntaxError(project: Project, generatedText: String, fileName: String): String? {
         val psiFile = PsiFileFactory.getInstance(project)
             .createFileFromText(fileName, KotlinLanguage.INSTANCE, generatedText, /* eventSystemEnabled = */ false, /* markAsCopy = */ true)
-        PsiManager.getInstance(project).dropPsiCaches()
         val firstError = PsiTreeUtil.findChildOfType(psiFile, PsiErrorElement::class.java)
         return firstError?.errorDescription
     }

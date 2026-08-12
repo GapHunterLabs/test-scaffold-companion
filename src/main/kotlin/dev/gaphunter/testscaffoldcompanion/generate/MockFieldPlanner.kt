@@ -4,7 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
-import com.intellij.psi.search.GlobalSearchScope
+import dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector
 
 /**
  * Layer 2, "mocks" half (DEVELOPMENT_PLAN.md section Capa 2, second
@@ -48,24 +48,28 @@ object MockFieldPlanner {
 
     /**
      * Wrapped in `runReadAction` for the same reason as
-     * [dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector.detect]
-     * -- [JavaPsiFacade.findClass] requires a read action even off the
-     * EDT. Today's only caller ([TestSkeletonWriter.render]) already
-     * runs inside a wider read action of its own, so this is reentrant
-     * defense in depth, not the sole guard -- kept anyway so this
-     * function stays safe to call in isolation later.
+     * [TestFrameworkDetector.detect] -- [JavaPsiFacade.findClass]
+     * requires a read action even off the EDT. Today's only caller
+     * ([TestSkeletonWriter.render]) already runs inside a wider read
+     * action of its own, so this is reentrant defense in depth, not the
+     * sole guard -- kept anyway so this function stays safe to call in
+     * isolation later.
      *
-     * Uses `moduleWithDependenciesAndLibrariesScope(module, includeTests
-     * = true)`, same fix and same reason as
-     * [dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector.detect]:
-     * Mockito is conventionally declared `testImplementation`, only ever
-     * on the module's *test* classpath -- `moduleWithLibrariesScope`
-     * (no test dependencies) would never find it in a real project.
+     * Reuses [TestFrameworkDetector.candidateScopes] -- same real bug,
+     * same fix: Mockito is conventionally declared `testImplementation`,
+     * which in a Gradle "separate module per source set" project lives
+     * on a completely separate `.test` sibling module [module] has no
+     * dependency edge to at all. Neither `moduleWithLibrariesScope` nor
+     * `moduleWithDependenciesAndLibrariesScope(module, includeTests =
+     * true)` alone ever finds it -- only explicitly also searching the
+     * `.test` sibling module's own scope does. Full incident in
+     * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section.
      */
     private fun mockitoAvailable(module: com.intellij.openapi.module.Module): Boolean =
         ApplicationManager.getApplication().runReadAction<Boolean> {
             val facade = JavaPsiFacade.getInstance(module.project)
-            val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, /* includeTests = */ true)
-            facade.findClass(MOCKITO_MOCK_FQN, scope) != null
+            TestFrameworkDetector.candidateScopes(module).any { scope ->
+                facade.findClass(MOCKITO_MOCK_FQN, scope) != null
+            }
         }
 }
