@@ -1,5 +1,6 @@
 package dev.gaphunter.testscaffoldcompanion.detect
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.Module
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
@@ -38,12 +39,24 @@ object TestFrameworkDetector {
      * wrong silently (see DEVELOPMENT_PLAN.md section 0): generating
      * JUnit imports into a TestNG-only module produces a skeleton that
      * never compiles.
+     *
+     * Wrapped in [ApplicationManager.getApplication] `runReadAction` --
+     * [JavaPsiFacade.findClass] touches the stub/file-based index, which
+     * requires a read action even off the EDT. Confirmed the hard way
+     * by a real `runIde` crash (`RuntimeExceptionWithAttachments: Read
+     * access is allowed from inside read-action only`) the first time
+     * this was called from [ApplicationManager.executeOnPooledThread]
+     * without one -- neither `test`/`buildPlugin`/`verifyPlugin` caught
+     * it, only a live invocation did. See
+     * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section
+     * for the full incident.
      */
-    fun detect(module: Module): TestFramework? {
-        val facade = JavaPsiFacade.getInstance(module.project)
-        val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
-        return TestFramework.entries.firstOrNull { framework ->
-            facade.findClass(framework.markerAnnotationFqn, scope) != null
+    fun detect(module: Module): TestFramework? =
+        ApplicationManager.getApplication().runReadAction<TestFramework?> {
+            val facade = JavaPsiFacade.getInstance(module.project)
+            val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
+            TestFramework.entries.firstOrNull { framework ->
+                facade.findClass(framework.markerAnnotationFqn, scope) != null
+            }
         }
-    }
 }

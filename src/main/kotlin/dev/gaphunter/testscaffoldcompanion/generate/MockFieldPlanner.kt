@@ -1,5 +1,6 @@
 package dev.gaphunter.testscaffoldcompanion.generate
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassType
@@ -45,9 +46,19 @@ object MockFieldPlanner {
         return Plan(declarations)
     }
 
-    private fun mockitoAvailable(module: com.intellij.openapi.module.Module): Boolean {
-        val facade = JavaPsiFacade.getInstance(module.project)
-        val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
-        return facade.findClass(MOCKITO_MOCK_FQN, scope) != null
-    }
+    /**
+     * Wrapped in `runReadAction` for the same reason as
+     * [dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector.detect]
+     * -- [JavaPsiFacade.findClass] requires a read action even off the
+     * EDT. Today's only caller ([TestSkeletonWriter.render]) already
+     * runs inside a wider read action of its own, so this is reentrant
+     * defense in depth, not the sole guard -- kept anyway so this
+     * function stays safe to call in isolation later.
+     */
+    private fun mockitoAvailable(module: com.intellij.openapi.module.Module): Boolean =
+        ApplicationManager.getApplication().runReadAction<Boolean> {
+            val facade = JavaPsiFacade.getInstance(module.project)
+            val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
+            facade.findClass(MOCKITO_MOCK_FQN, scope) != null
+        }
 }
