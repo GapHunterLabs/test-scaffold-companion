@@ -187,12 +187,17 @@ la primera vez", con el resto marcado honestamente como manual.
       Companion", cada uno en el momento en que se encontró.
 - [x] Al menos 2 screenshots reales (3 guardadas), Full Screen, con
       datos de demo realistas — CONSTITUTION.md §7 punto 5.
-- [ ] `marketplace-listing-template.md` — pendiente hasta que el
-      plugin tenga su primer listado real en Marketplace (regla:
-      se agrega la misma sesión en que se publica, no antes).
-- [ ] Listado en Marketplace, envío a moderación — acción manual del
-      usuario (primer upload de un plugin nunca puede ir por
-      `publishPlugin`/Gradle).
+- [x] `marketplace-listing-template.md` — bloque completo de 6
+      subsecciones agregado 2026-08-12 (corrección: la regla real es
+      agregarlo apenas el plugin llega a "shipped" — pushed + tests/
+      verifyPlugin verde + screenshots —, no recién cuando ya está
+      listado, error de lectura propio corregido en memoria).
+- [x] Listado en Marketplace: subido con toda la información
+      (listing completo, screenshots), **enviado a moderación**
+      (status real: "Under review" / "Submitted"), 2026-08-12.
+      Primer upload hecho manualmente por el usuario, como corresponde
+      (no hay vía Gradle/`publishPlugin` para la primera subida de un
+      plugin nuevo).
 
 ## 3. Explícitamente fuera de alcance v1
 
