@@ -26,5 +26,18 @@
   never added as a dependency of this plugin.
 - Works for both Java and Kotlin classes.
 
+### Fixed
+
+- Several real threading/classpath-resolution bugs found only by live
+  `runIde` testing against a real multi-module Gradle project, none
+  caught by unit tests or `verifyPlugin`: PSI/index access off the EDT
+  needing `runReadAction`, test-scoped (`testImplementation`)
+  dependencies never being visible through a "main" module's own
+  search scope in a Gradle "separate module per source set" project,
+  and `PsiManager.dropPsiCaches()` requiring the EDT specifically.
+  Confirmed working end-to-end afterward: JUnit5 detection, Mockito
+  mock generation, and honest per-method `TODO`s all verified against
+  a real demo project.
+
 [Unreleased]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.0...HEAD
 [0.1.0]: https://github.com/GapHunterLabs/test-scaffold-companion/commits/0.1.0
