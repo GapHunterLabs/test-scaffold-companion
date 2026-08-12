@@ -54,11 +54,18 @@ object MockFieldPlanner {
      * runs inside a wider read action of its own, so this is reentrant
      * defense in depth, not the sole guard -- kept anyway so this
      * function stays safe to call in isolation later.
+     *
+     * Uses `moduleWithDependenciesAndLibrariesScope(module, includeTests
+     * = true)`, same fix and same reason as
+     * [dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector.detect]:
+     * Mockito is conventionally declared `testImplementation`, only ever
+     * on the module's *test* classpath -- `moduleWithLibrariesScope`
+     * (no test dependencies) would never find it in a real project.
      */
     private fun mockitoAvailable(module: com.intellij.openapi.module.Module): Boolean =
         ApplicationManager.getApplication().runReadAction<Boolean> {
             val facade = JavaPsiFacade.getInstance(module.project)
-            val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
+            val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, /* includeTests = */ true)
             facade.findClass(MOCKITO_MOCK_FQN, scope) != null
         }
 }

@@ -40,6 +40,19 @@ object TestFrameworkDetector {
      * JUnit imports into a TestNG-only module produces a skeleton that
      * never compiles.
      *
+     * Uses [GlobalSearchScope.moduleWithDependenciesAndLibrariesScope]
+     * with `includeTests = true`, NOT [GlobalSearchScope.moduleWithLibrariesScope].
+     * Real bug found live (not in any test): [module] here is the class
+     * UNDER test's own module (e.g. a Gradle "main" source-set module),
+     * and a test framework declared as `testImplementation` in the
+     * user's build file is only ever on the *test* source set's
+     * classpath, never the main one -- `moduleWithLibrariesScope` (no
+     * test dependencies) always returned null for a completely normal,
+     * correctly-configured project. Confirmed via a live `runIde`
+     * reproduction against a real multi-source-set Gradle project (see
+     * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section
+     * for the full incident and the diagnostic trail that found it).
+     *
      * Wrapped in [ApplicationManager.getApplication] `runReadAction` --
      * [JavaPsiFacade.findClass] touches the stub/file-based index, which
      * requires a read action even off the EDT. Confirmed the hard way
@@ -47,14 +60,12 @@ object TestFrameworkDetector {
      * access is allowed from inside read-action only`) the first time
      * this was called from [ApplicationManager.executeOnPooledThread]
      * without one -- neither `test`/`buildPlugin`/`verifyPlugin` caught
-     * it, only a live invocation did. See
-     * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section
-     * for the full incident.
+     * it, only a live invocation did.
      */
     fun detect(module: Module): TestFramework? =
         ApplicationManager.getApplication().runReadAction<TestFramework?> {
             val facade = JavaPsiFacade.getInstance(module.project)
-            val scope = GlobalSearchScope.moduleWithLibrariesScope(module)
+            val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module, /* includeTests = */ true)
             TestFramework.entries.firstOrNull { framework ->
                 facade.findClass(framework.markerAnnotationFqn, scope) != null
             }
