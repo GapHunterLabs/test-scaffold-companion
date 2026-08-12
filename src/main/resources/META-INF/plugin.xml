@@ -1,0 +1,54 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>dev.gaphunter.testscaffoldcompanion</id>
+    <name>Test Scaffold Companion</name>
+    <vendor>Gap Hunter Labs</vendor>
+    <description><![CDATA[
+        <p>Generates a real, compiling JUnit test skeleton for a Java or
+        Kotlin class -- one empty test method per public method, framework
+        already detected from your project's own dependencies and
+        imported correctly. Every skeleton is validated against an
+        in-memory PSI copy before anything is written to disk: if a
+        generated reference can't resolve, nothing gets written for that
+        method -- you get an honest TODO comment instead of a broken or
+        silently-empty test. The #1 complaint against every free
+        alternative in this space (Squaretest, TestMe, JUnitGenerator) is
+        generated code that doesn't compile or a test that "passes" by
+        asserting nothing; this plugin's whole design exists to not do
+        that.</p>
+        <p>100% local -- no network call, no account, no telemetry. PSI
+        validation always runs off the EDT, same pattern as every other
+        Gap Hunter Labs plugin.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <!-- Kotlin PSI needed to read Kotlin classes' public methods for
+         skeleton generation, not just Java. See SDK_GOTCHAS.md SS3:
+         supportsKotlinPluginMode is required or the plugin silently
+         fails to load, confirmed in 2 independent plugins before this
+         one. K1/K2-neutral by design (INTELLIJ_PLATFORM_KNOWLEDGE.md,
+         "Test Scaffold Companion" section), same PSI-only approach
+         already proven in api-security-companion's
+         KotlinTypeAnnotationResolver.kt, never the Analysis API. -->
+    <depends>org.jetbrains.kotlin</depends>
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true"/>
+    </extensions>
+
+    <actions>
+        <group id="TestScaffoldCompanion.Actions" text="Test Scaffold Companion" popup="true">
+            <action id="TestScaffoldCompanion.GenerateSkeleton"
+                    class="dev.gaphunter.testscaffoldcompanion.actions.GenerateTestSkeletonAction"
+                    text="Generate Test Skeleton"
+                    description="Generates a real, in-memory-validated JUnit test skeleton for this class -- one empty test method per public method, framework detected from your project's own classpath"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </group>
+    </actions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Test Scaffold Companion" displayType="BALLOON"/>
+    </extensions>
+</idea-plugin>
