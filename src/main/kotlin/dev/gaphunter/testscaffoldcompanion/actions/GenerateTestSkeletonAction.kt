@@ -51,31 +51,43 @@ class GenerateTestSkeletonAction : AnAction() {
         val psiClass = findTargetClass(e) ?: return
         val module = ModuleUtilCore.findModuleForPsiElement(psiClass) ?: return notify(project, "No module found for this class -- cannot resolve its test framework.")
 
+        // Everything below touches PSI/the stub index (TestFrameworkDetector,
+        // PublicMethodCollector, TestSkeletonWriter -> MockFieldPlanner all
+        // call into JavaPsiFacade/PsiClass APIs that require a read action
+        // even off the EDT) -- wrapping the whole block in one runReadAction
+        // is simpler and safer than wrapping each call site individually.
+        // Confirmed necessary by a real runIde crash
+        // (RuntimeExceptionWithAttachments: "Read access is allowed from
+        // inside read-action only"), not caught by test/buildPlugin/
+        // verifyPlugin -- see INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold
+        // Companion" section.
         ApplicationManager.getApplication().executeOnPooledThread {
-            val framework = TestFrameworkDetector.detect(module)
-            if (framework == null) {
-                notify(project, "No supported test framework (JUnit 4/5, TestNG) found on this module's classpath -- add one as a test dependency first.")
-                return@executeOnPooledThread
-            }
+            ApplicationManager.getApplication().runReadAction {
+                val framework = TestFrameworkDetector.detect(module)
+                if (framework == null) {
+                    notify(project, "No supported test framework (JUnit 4/5, TestNG) found on this module's classpath -- add one as a test dependency first.")
+                    return@runReadAction
+                }
 
-            val methods = PublicMethodCollector.collect(psiClass)
-            if (methods.isEmpty()) {
-                notify(project, "${psiClass.name} has no public methods to scaffold a test for.")
-                return@executeOnPooledThread
-            }
+                val methods = PublicMethodCollector.collect(psiClass)
+                if (methods.isEmpty()) {
+                    notify(project, "${psiClass.name} has no public methods to scaffold a test for.")
+                    return@runReadAction
+                }
 
-            val packageName = (psiClass.containingFile as? PsiClassOwner)?.packageName
-            val generatedText = TestSkeletonWriter.render(psiClass, methods, framework, packageName)
-            val fileName = "${psiClass.name}Test.kt"
+                val packageName = (psiClass.containingFile as? PsiClassOwner)?.packageName
+                val generatedText = TestSkeletonWriter.render(psiClass, methods, framework, packageName)
+                val fileName = "${psiClass.name}Test.kt"
 
-            val error = InMemoryValidator.findFirstSyntaxError(project, generatedText, fileName)
-            if (error != null) {
-                notify(project, "Generated skeleton failed its own safety check ($error) -- nothing was written. This is the plugin refusing to hand you a broken test, not a bug.")
-                return@executeOnPooledThread
-            }
+                val error = InMemoryValidator.findFirstSyntaxError(project, generatedText, fileName)
+                if (error != null) {
+                    notify(project, "Generated skeleton failed its own safety check ($error) -- nothing was written. This is the plugin refusing to hand you a broken test, not a bug.")
+                    return@runReadAction
+                }
 
-            ApplicationManager.getApplication().invokeLater {
-                writeToDisk(project, psiClass, fileName, generatedText)
+                ApplicationManager.getApplication().invokeLater {
+                    writeToDisk(project, psiClass, fileName, generatedText)
+                }
             }
         }
     }
