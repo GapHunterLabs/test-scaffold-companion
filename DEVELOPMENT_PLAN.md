@@ -126,18 +126,33 @@ la primera vez", con el resto marcado honestamente como manual.
       de esta capa apenas se confirme — no esperar al cierre de sesión
       (regla dura §5.2).
 
-### Capa 1 — Skeleton puro (equivalente al "Rename" de refactor-simulator: la feature mínima que prueba el motor completo)
+### Capa 1 — Skeleton puro — ✅ COMPLETA Y VERIFICADA EN VIVO (2026-08-12)
 
-- [ ] Acción de editor: click derecho sobre una clase Java/Kotlin →
-      "Generate Test Skeleton" (o `Alt+Insert` extendido, evaluar cuál
-      encaja mejor con la convención de la plataforma).
-- [ ] Un método de test vacío por cada método público de la clase,
+- [x] Acción de editor: click derecho sobre una clase Java/Kotlin →
+      "Generate Test Skeleton" (context menu de editor + Project view).
+- [x] Un método de test vacío por cada método público de la clase,
       nombre según convención (`test<NombreMétodo>`), framework
-      detectado real (Capa 0) ya importado correctamente.
-- [ ] Motor de validación en memoria (sección 1.1) integrado desde el
-      primer commit, no como un add-on posterior — es el diferencial
-      del producto, no una feature "nice to have" de v2.
-- [ ] Tests + `verifyPlugin` 6/6 antes de considerar la capa cerrada.
+      detectado real ya importado correctamente.
+- [x] Motor de validación en memoria (sección 1.1) integrado desde el
+      primer commit.
+- [x] Tests + `verifyPlugin` 6/6 — y además **confirmado funcionando
+      de punta a punta en un `runIde` real** contra un proyecto demo
+      real, no solo en tests unitarios.
+- **4 bugs reales encontrados y arreglados, ninguno detectado por
+  `test`/`buildPlugin`/`verifyPlugin` — solo por `runIde` en vivo**
+  (detalle completo en `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test
+  Scaffold Companion"):
+  1. Acceso a PSI/índices desde hilo pooled sin `runReadAction`.
+  2. `GlobalSearchScope.moduleWithLibrariesScope`/`moduleWithDependenciesAndLibrariesScope(includeTests=true)`
+     nunca ven dependencias `testImplementation` de un módulo hermano
+     `.test` en un proyecto Gradle con separación por source set —
+     hubo que buscar el módulo `.test` explícitamente.
+  3. Error de string propio: el nombre del módulo hermano se
+     construía mal (`<nombre>.main.test` en vez de `<base>.test`) —
+     ahora con test de regresión unitario directo
+     (`TestFrameworkDetectorTest`).
+  4. `PsiManager.dropPsiCaches()` exige el EDT específicamente, no
+     solo un read action — la llamada era innecesaria y se sacó.
 
 ### Capa 2 — Inferencia de aserciones + mocks básicos — ✅ COMPLETA (2026-08-11)
 
@@ -160,18 +175,24 @@ la primera vez", con el resto marcado honestamente como manual.
   fixture de test liviano sin JDK indexado — documentado en
   `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test Scaffold Companion".
 
-### Capa 3 — Documentación + verificación final (mismo orden fijo de siempre, `CONSTITUCIÓN` §5.3.2)
+### Capa 3 — Documentación + verificación final
 
-- [ ] README con la sección "Free vs Pro" si corresponde (evaluar
-      monetización recién con uso real, mismo criterio que Fase 4 de
-      refactor-simulator — no precipitar precio en v1 de un plugin sin
-      ancla de mercado).
-- [ ] `CHANGELOG.md`, `marketplace-listing-template.md` (regla
-      permanente: toda la sección se agrega la misma sesión que se
-      da el plugin por publicado).
-- [ ] Cierre de mapas: cualquier gotcha nuevo de PSI/`javap` real
-      encontrado en el camino va a `INTELLIJ_PLATFORM_KNOWLEDGE.md`/
-      `SDK_GOTCHAS.md` en el momento, no al final.
+- [x] README completo (competidores citados, "Why built this way",
+      "Free, forever" — sin plan de monetización todavía, deferido a
+      uso real, mismo criterio que Fase 4 de refactor-simulator).
+- [x] `CHANGELOG.md` completo.
+- [x] Repo público en GitHub (`GapHunterLabs/test-scaffold-companion`).
+- [x] Cierre de mapas: los 4 bugs reales de plataforma ya están en
+      `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test Scaffold
+      Companion", cada uno en el momento en que se encontró.
+- [x] Al menos 2 screenshots reales (3 guardadas), Full Screen, con
+      datos de demo realistas — CONSTITUTION.md §7 punto 5.
+- [ ] `marketplace-listing-template.md` — pendiente hasta que el
+      plugin tenga su primer listado real en Marketplace (regla:
+      se agrega la misma sesión en que se publica, no antes).
+- [ ] Listado en Marketplace, envío a moderación — acción manual del
+      usuario (primer upload de un plugin nunca puede ir por
+      `publishPlugin`/Gradle).
 
 ## 3. Explícitamente fuera de alcance v1
 
