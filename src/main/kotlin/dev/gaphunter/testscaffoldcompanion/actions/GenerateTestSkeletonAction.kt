@@ -20,6 +20,7 @@ import dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector
 import dev.gaphunter.testscaffoldcompanion.generate.InMemoryValidator
 import dev.gaphunter.testscaffoldcompanion.generate.PublicMethodCollector
 import dev.gaphunter.testscaffoldcompanion.generate.TestSkeletonWriter
+import dev.gaphunter.testscaffoldcompanion.review.ReviewPrompt
 import org.jetbrains.kotlin.idea.KotlinLanguage
 
 /**
@@ -103,6 +104,8 @@ class GenerateTestSkeletonAction : AnAction() {
             val psiFile: PsiFile = PsiFileFactory.getInstance(project)
                 .createFileFromText(fileName, KotlinLanguage.INSTANCE, text)
             testDirectory.add(psiFile)
+            // Real success only -- never the "already exists" no-op above.
+            ReviewPrompt.recordHit(project)
         })
     }
 
