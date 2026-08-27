@@ -1,11 +1,9 @@
 # Test Scaffold Companion — Plan de desarrollo (v1)
 
-Escrito 2026-08-11, antes de escribir código. Ver `CONSTITUTION.md` §1
-(segunda excepción documentada) para la decisión de negocio: sin ancla
-de mercado (los 4 competidores verificados — Squaretest, TestMe, AI
-Test Case Generator, UnitTestBot — son FREE), construcción autorizada
-igual, como apuesta consciente, mismo tratamiento que Refactor
-Simulator.
+Escrito 2026-08-11, antes de escribir código. Sin ancla de mercado
+(los 4 competidores verificados — Squaretest, TestMe, AI Test Case
+Generator, UnitTestBot — son FREE), construcción autorizada igual,
+como apuesta consciente, mismo tratamiento que Refactor Simulator.
 
 ## 0. Qué significa "ir un paso más adelante" acá — el diferencial real
 
@@ -20,12 +18,11 @@ aislado:
 - JUnitGenerator V2.0: abandono documentado desde 2009-2010, garbled
   text detectado recién en 2025 (nadie lo mira)
 
-**El defecto #1 de la categoría entera es el mismo defecto #1 que
-motivó `CONSTITUTION.md` §6** ("cómputo pesado fuera del EDT" existe
-por el mismo tipo de problema en otra categoría): generan texto que
-*parece* código pero no compila, o rompe con casos reales (frameworks
-modernos, tipos genéricos, herencia). Ninguno de los 4 competidores
-verifica el output antes de escribirlo a disco.
+**El defecto #1 de la categoría entera es el mismo tipo de defecto que
+ya se vio en otra categoría del catálogo** ("cómputo pesado fuera del
+EDT"): generan texto que *parece* código pero no compila, o rompe con
+casos reales (frameworks modernos, tipos genéricos, herencia). Ninguno
+de los 4 competidores verifica el output antes de escribirlo a disco.
 
 **El diferencial de este plugin no es "generar más tests" — es
 generar CERO tests rotos.** Concretamente: todo skeleton generado se
@@ -35,10 +32,9 @@ puede resolver algo con confianza, el plugin degrada con gracia
 (genera un TODO explícito con el motivo, nunca una aserción
 inventada/adivinada) en vez de escribir un test que falla en silencio
 — mismo espíritu que `xsd-companion`'s "unresolved locations flagged
-inline en vez de crashear" (`INTELLIJ_PLATFORM_KNOWLEDGE.md`, patrón
-ya citado en la sección de BPMN como el estándar del catálogo).
+inline en vez de crashear", ya usado en otra parte del catálogo.
 
-## 1. Cómo esto reduce falsos positivos — mapeo directo a los mapas ya existentes
+## 1. Cómo esto reduce falsos positivos
 
 Un "falso positivo" acá es un test generado que parece correcto pero
 no lo es: no compila, no corre, o corre pero no prueba nada real
@@ -47,9 +43,8 @@ que el catálogo ya probó en otro plugin:
 
 ### 1.1 Validación en memoria antes de escribir a disco (motor central)
 
-Reusa **verbatim** el patrón de `refactor-simulator`
-(`INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Interactive Refactoring
-Simulator — Investigación de Plataforma", subsección B):
+Reusa **verbatim** el patrón ya probado en `refactor-simulator` (PSI
+en memoria, nunca tocando el archivo real hasta pasar validación):
 
 ```
 PsiFileFactory.getInstance(project)
@@ -62,8 +57,7 @@ requiere compilar de verdad:
 1. `PsiErrorElement` walk sobre el `PsiFile` en memoria — cualquier
    nodo de error (sintaxis inválida) bloquea la escritura a disco.
    Mismo tipo de chequeo que ya usa `mermaid-companion` para su propio
-   lexer (`INTELLIJ_PLATFORM_KNOWLEDGE.md` sección 1, "Real syntax
-   validation").
+   lexer ("Real syntax validation").
 2. Resolución de referencias: cada símbolo que el skeleton generado
    usa (nombre de clase bajo test, tipos de parámetros del framework
    de test — `@Test`, `assertEquals`, el mock que se genere) debe
@@ -75,20 +69,19 @@ requiere compilar de verdad:
    plugin no genera ese test — reporta por qué, no genera un import
    roto.
 
-### 1.2 Inferencia de tipos vía la misma vía "estándar y estable" ya elegida en el catálogo
+### 1.2 Inferencia de tipos vía la vía "estándar y estable" ya elegida en el catálogo
 
-`CONSTITUTION.md` §6 ya documenta la lección real (caso
-`PasswordSafe.getAsync()` vs. `get()` síncrono, y el caso reciente de
-`ActionUtil.performAction` vs. `invokeAction` en refactor-simulator):
-cuando la plataforma ofrece un camino nuevo/async y uno viejo/estable,
-preferir el viejo. Aplicado acá: para inferir qué aserción generar
-por defecto (ej. `assertNotNull` vs. un placeholder), usar
-`PsiType`/`PsiMethod.getReturnType()` — API PSI plana y estable, NUNCA
-la Analysis API/K1-K2 (el mismo split ya auditado y confirmado limpio
-en `api-security-companion`, ver `SDK_GOTCHAS.md` §13 — este plugin
-reutiliza el mismo patrón K1/K2-neutral que
-`KotlinTypeAnnotationResolver.kt` ya demostró, no re-decide esa
-elección desde cero).
+El catálogo ya documenta la lección real (caso `PasswordSafe.getAsync()`
+vs. `get()` síncrono, y el caso de `ActionUtil.performAction` vs.
+`invokeAction` en refactor-simulator): cuando la plataforma ofrece un
+camino nuevo/async y uno viejo/estable, preferir el viejo. Aplicado
+acá: para inferir qué aserción generar por defecto (ej.
+`assertNotNull` vs. un placeholder), usar `PsiType`/
+`PsiMethod.getReturnType()` — API PSI plana y estable, NUNCA la
+Analysis API/K1-K2 (el mismo split ya auditado y confirmado limpio en
+`api-security-companion`) — este plugin reutiliza el mismo patrón
+K1/K2-neutral que `KotlinTypeAnnotationResolver.kt` ya demostró, no
+re-decide esa elección desde cero.
 
 ### 1.3 Degradación explícita, nunca aserción inventada
 
@@ -106,25 +99,20 @@ métrica de éxito de este plugin no es "% de métodos con aserción
 generada", es "% de tests generados que compilan y pasan en verde
 la primera vez", con el resto marcado honestamente como manual.
 
-## 2. Alcance v1 — Knowledge Layer primero, luego capas de dependencia real (`CONSTITUCIÓN` §5.3)
+## 2. Alcance v1 — capas de dependencia real
 
-### Capa 0 — Knowledge Layer (antes de cualquier código)
+### Capa 0 — Conocimiento previo (antes de cualquier código)
 
-- [ ] Confirmar en `SDK_GOTCHAS.md`/`INTELLIJ_PLATFORM_KNOWLEDGE.md`
-      si ya existe una firma de API confirmada por `javap` para
-      "listar métodos públicos de una `PsiClass`/`KtClass`" en el
-      rango de versiones objetivo (243-262, mismo rango que
-      `refactor-simulator`) — si no, correr `javap` real antes de
-      codear, no asumir la firma.
-- [ ] Confirmar mecanismo de detección del framework de test ya
+- [x] Confirmada la firma de API real vía `javap` para "listar métodos
+      públicos de una `PsiClass`/`KtClass`" en el rango de versiones
+      objetivo (243-262, mismo rango que `refactor-simulator`) — no
+      asumida sin verificar.
+- [x] Confirmado el mecanismo de detección del framework de test ya
       presente en el proyecto (JUnit4 vs JUnit5 vs TestNG — mismo
       patrón "detección por contenido real, no adivinar" que
       `nginx-companion`/`gitlab-ci-companion` ya aplican, acá vía
       `bundledPlugin`/dependencias del módulo Gradle/Maven real, no
       un dropdown de configuración manual).
-- [ ] Registrar en `INTELLIJ_PLATFORM_KNOWLEDGE.md` cualquier hallazgo
-      de esta capa apenas se confirme — no esperar al cierre de sesión
-      (regla dura §5.2).
 
 ### Capa 1 — Skeleton puro — ✅ COMPLETA Y VERIFICADA EN VIVO (2026-08-12)
 
@@ -139,9 +127,7 @@ la primera vez", con el resto marcado honestamente como manual.
       de punta a punta en un `runIde` real** contra un proyecto demo
       real, no solo en tests unitarios.
 - **4 bugs reales encontrados y arreglados, ninguno detectado por
-  `test`/`buildPlugin`/`verifyPlugin` — solo por `runIde` en vivo**
-  (detalle completo en `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test
-  Scaffold Companion"):
+  `test`/`buildPlugin`/`verifyPlugin` — solo por `runIde` en vivo:**
   1. Acceso a PSI/índices desde hilo pooled sin `runReadAction`.
   2. `GlobalSearchScope.moduleWithLibrariesScope`/`moduleWithDependenciesAndLibrariesScope(includeTests=true)`
      nunca ven dependencias `testImplementation` de un módulo hermano
@@ -172,8 +158,7 @@ la primera vez", con el resto marcado honestamente como manual.
       `verifyPlugin` 6/6 IDEs Compatible.
 - Bug real encontrado y corregido en el camino:
   `PsiType.getCanonicalText()` no devuelve el FQN completo en un
-  fixture de test liviano sin JDK indexado — documentado en
-  `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test Scaffold Companion".
+  fixture de test liviano sin JDK indexado.
 
 ### Capa 3 — Documentación + verificación final
 
@@ -182,11 +167,8 @@ la primera vez", con el resto marcado honestamente como manual.
       uso real, mismo criterio que Fase 4 de refactor-simulator).
 - [x] `CHANGELOG.md` completo.
 - [x] Repo público en GitHub (`GapHunterLabs/test-scaffold-companion`).
-- [x] Cierre de mapas: los 4 bugs reales de plataforma ya están en
-      `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Test Scaffold
-      Companion", cada uno en el momento en que se encontró.
 - [x] Al menos 2 screenshots reales (3 guardadas), Full Screen, con
-      datos de demo realistas — CONSTITUTION.md §7 punto 5.
+      datos de demo realistas.
 - [x] `marketplace-listing-template.md` — bloque completo de 6
       subsecciones agregado 2026-08-12 (corrección: la regla real es
       agregarlo apenas el plugin llega a "shipped" — pushed + tests/
@@ -214,13 +196,6 @@ la primera vez", con el resto marcado honestamente como manual.
 
 ## Fuentes de este plan
 
-- `CONSTITUTION.md` §1 (segunda excepción documentada, agregada
-  2026-08-11), §5.2, §5.3, §6.
-- `INTELLIJ_PLATFORM_KNOWLEDGE.md`, sección "Interactive Refactoring
-  Simulator — Investigación de Plataforma" (subsección B, PSI en
-  memoria).
-- `SDK_GOTCHAS.md` §13 (patrón K1/K2-neutral ya confirmado en
-  `api-security-companion`).
 - Auditoría de reviews reales 2026-08-11 vía
   `plugins.jetbrains.com/api/plugins/<id>/comments` contra Squaretest
   (10405), TestMe (9471), AI Test Case Generator (31249), UnitTestBot
