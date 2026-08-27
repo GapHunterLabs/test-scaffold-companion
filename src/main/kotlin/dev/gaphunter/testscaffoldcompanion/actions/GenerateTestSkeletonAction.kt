@@ -31,8 +31,7 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
  *
  * All the real work (PSI walk, in-memory validation, module/classpath
  * lookup) runs on a background thread via
- * ApplicationManager.executeOnPooledThread, per CONSTITUTION.md section
- * 6 ("cómputo pesado siempre fuera del EDT") -- only the final
+ * ApplicationManager.executeOnPooledThread -- only the final
  * WriteCommandAction that actually creates the file touches the EDT,
  * and only after validation already passed.
  */
@@ -59,8 +58,7 @@ class GenerateTestSkeletonAction : AnAction() {
         // Confirmed necessary by a real runIde crash
         // (RuntimeExceptionWithAttachments: "Read access is allowed from
         // inside read-action only"), not caught by test/buildPlugin/
-        // verifyPlugin -- see INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold
-        // Companion" section.
+        // verifyPlugin.
         ApplicationManager.getApplication().executeOnPooledThread {
             ApplicationManager.getApplication().runReadAction {
                 val framework = TestFrameworkDetector.detect(module)

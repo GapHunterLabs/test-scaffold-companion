@@ -14,8 +14,7 @@ import com.intellij.psi.PsiModifier
  * Uses [PsiClass.getMethods] (own methods only, not [PsiClass.getAllMethods]
  * which would pull in inherited members) -- confirmed via `javap` against
  * the oldest target IDE's jar (build 243) as a stable, non-Jvm* PSI
- * signature, see INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion"
- * section. Works for both Java and Kotlin classes: a KtLightClass exposes
+ * signature. Works for both Java and Kotlin classes: a KtLightClass exposes
  * the same PsiClass/PsiMethod view Ctrl+Click already uses everywhere
  * else in this catalog (see api-security-companion's
  * KotlinTypeAnnotationResolver.kt for the same K1/K2-neutral pattern).

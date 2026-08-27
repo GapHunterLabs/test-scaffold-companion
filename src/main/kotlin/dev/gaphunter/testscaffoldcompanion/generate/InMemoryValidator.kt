@@ -12,9 +12,8 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
  * throwaway, never-persisted [com.intellij.psi.PsiFile] and checked for
  * syntax errors BEFORE it's ever offered to the user as something to
  * write to disk. Uses [PsiFileFactory.createFileFromText] -- the exact
- * "sandbox PSI" mechanism already proven in refactor-simulator
- * (INTELLIJ_PLATFORM_KNOWLEDGE.md, "Interactive Refactoring Simulator",
- * subsection B): the file this creates is never added to a
+ * "sandbox PSI" mechanism already proven in refactor-simulator: the
+ * file this creates is never added to a
  * [com.intellij.psi.PsiDirectory], so it carries zero risk to the real
  * project regardless of what it contains.
  *
@@ -44,11 +43,10 @@ object InMemoryValidator {
      * cache invalidation to read a `PsiErrorElement` off a file that
      * was never added to any project structure in the first place.
      * Removing the call was the fix, not moving it to the EDT (that
-     * would defeat the whole point of running this off the EDT per
-     * CONSTITUTION.md section 6). Confirmed via a real `runIde` crash
+     * would defeat the whole point of running this off the EDT).
+     * Confirmed via a real `runIde` crash
      * (`RuntimeExceptionWithAttachments: Access is allowed from Event
-     * Dispatch Thread (EDT) only`) -- see INTELLIJ_PLATFORM_KNOWLEDGE.md
-     * "Test Scaffold Companion" section for the full incident.
+     * Dispatch Thread (EDT) only`).
      */
     fun findFirstSyntaxError(project: Project, generatedText: String, fileName: String): String? {
         val psiFile = PsiFileFactory.getInstance(project)

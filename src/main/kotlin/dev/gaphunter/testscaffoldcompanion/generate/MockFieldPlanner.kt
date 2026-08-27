@@ -62,8 +62,7 @@ object MockFieldPlanner {
      * dependency edge to at all. Neither `moduleWithLibrariesScope` nor
      * `moduleWithDependenciesAndLibrariesScope(module, includeTests =
      * true)` alone ever finds it -- only explicitly also searching the
-     * `.test` sibling module's own scope does. Full incident in
-     * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section.
+     * `.test` sibling module's own scope does.
      */
     private fun mockitoAvailable(module: com.intellij.openapi.module.Module): Boolean =
         ApplicationManager.getApplication().runReadAction<Boolean> {

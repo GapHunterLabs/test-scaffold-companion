@@ -68,8 +68,7 @@ validation, assertion inference, mock field generation — is fully free,
 no paywall. This plugin has no confirmed paid competitor with real
 complaints in this niche (the free alternatives audited above are all
 free); it was built as a deliberate bet rather than the usual
-evidence-anchored pick (see `CONSTITUTION.md` §1, second documented
-exception). No monetization plan exists yet — that decision waits for
+evidence-anchored pick. No monetization plan exists yet — that decision waits for
 real usage signal, same discipline already applied to Refactor
 Simulator.
 

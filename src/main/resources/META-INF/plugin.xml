@@ -25,12 +25,10 @@
     <depends>com.intellij.java</depends>
 
     <!-- Kotlin PSI needed to read Kotlin classes' public methods for
-         skeleton generation, not just Java. See SDK_GOTCHAS.md SS3:
-         supportsKotlinPluginMode is required or the plugin silently
-         fails to load, confirmed in 2 independent plugins before this
-         one. K1/K2-neutral by design (INTELLIJ_PLATFORM_KNOWLEDGE.md,
-         "Test Scaffold Companion" section), same PSI-only approach
-         already proven in api-security-companion's
+         skeleton generation, not just Java. supportsKotlinPluginMode is
+         required or the plugin silently fails to load, confirmed in 2
+         independent plugins before this one. K1/K2-neutral by design,
+         same PSI-only approach already proven in api-security-companion's
          KotlinTypeAnnotationResolver.kt, never the Analysis API. -->
     <depends>org.jetbrains.kotlin</depends>
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
