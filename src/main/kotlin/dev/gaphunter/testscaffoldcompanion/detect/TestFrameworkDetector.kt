@@ -43,9 +43,7 @@ object TestFrameworkDetector {
      * compiles.
      *
      * **Two real bugs found here, both only by live `runIde`
-     * diagnosis, neither by test/buildPlugin/verifyPlugin -- full
-     * incident in INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold
-     * Companion" section:**
+     * diagnosis, neither by test/buildPlugin/verifyPlugin:**
      *
      * 1. `GlobalSearchScope.moduleWithLibrariesScope(module)` excludes
      *    test-scoped dependencies entirely -- a `testImplementation`

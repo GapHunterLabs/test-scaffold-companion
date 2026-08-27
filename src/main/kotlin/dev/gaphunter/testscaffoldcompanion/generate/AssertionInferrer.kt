@@ -8,9 +8,7 @@ import com.intellij.psi.PsiTypes
 /**
  * Layer 2: suggests a default assertion for a method's return type, via
  * [PsiMethod.getReturnType] -- confirmed stable/PSI-plain via `javap`
- * against the oldest target IDE's jar (see
- * INTELLIJ_PLATFORM_KNOWLEDGE.md "Test Scaffold Companion" section),
- * never the Analysis API.
+ * against the oldest target IDE's jar, never the Analysis API.
  *
  * Deliberately conservative (DEVELOPMENT_PLAN.md section 1.3): this only
  * suggests an assertion when the return type is simple enough that a
