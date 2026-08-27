@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Added
+
+- Review/star CTA: after 5 successful test-skeleton generations (never
+  counted for the "already exists" no-op or a failed safety check), a
+  one-time notification asks whether to rate the plugin on
+  Marketplace, with a permanent "Don't ask again" option.
+
 ## [0.1.0]
 
 ### Added
@@ -39,5 +48,6 @@
   mock generation, and honest per-method `TODO`s all verified against
   a real demo project.
 
-[Unreleased]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/GapHunterLabs/test-scaffold-companion/commits/0.1.0
