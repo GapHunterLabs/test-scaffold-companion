@@ -6,6 +6,11 @@ a compiling **Kotlin** JUnit test skeleton for a Java or Kotlin class
 (your test sources need Kotlin) — one test method per public method,
 with your project's own test framework detected and imported correctly.
 
+![Test Scaffold Companion: a JUnit test skeleton for any class, written where tests go](docs/media/hero.gif)
+
+On its own:
+[Generate a test](docs/media/01-generate.gif)
+
 ## Why it exists
 
 The free alternatives in this space have the same defect, reported by
