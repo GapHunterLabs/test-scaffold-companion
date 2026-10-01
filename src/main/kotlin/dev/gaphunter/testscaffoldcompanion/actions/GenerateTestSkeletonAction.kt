@@ -8,17 +8,24 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiClassOwner
-import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import dev.gaphunter.testscaffoldcompanion.detect.TestFrameworkDetector
 import dev.gaphunter.testscaffoldcompanion.generate.InMemoryValidator
 import dev.gaphunter.testscaffoldcompanion.generate.PublicMethodCollector
+import dev.gaphunter.testscaffoldcompanion.generate.TestLocation
 import dev.gaphunter.testscaffoldcompanion.generate.TestSkeletonWriter
 import dev.gaphunter.testscaffoldcompanion.review.ReviewPrompt
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -85,17 +92,37 @@ class GenerateTestSkeletonAction : AnAction() {
                 }
 
                 ApplicationManager.getApplication().invokeLater {
-                    writeToDisk(project, psiClass, fileName, generatedText)
+                    writeToDisk(project, module, psiClass, fileName, generatedText)
                 }
             }
         }
     }
 
-    private fun writeToDisk(project: com.intellij.openapi.project.Project, psiClass: PsiClass, fileName: String, text: String) {
+    private fun writeToDisk(project: com.intellij.openapi.project.Project, module: Module, psiClass: PsiClass, fileName: String, text: String) {
         val sourceDirectory = psiClass.containingFile?.containingDirectory ?: return notify(project, "Could not resolve a directory to write the test into.")
-        val testDirectory = resolveTestSourceDirectory(sourceDirectory) ?: sourceDirectory
+        val sourceRoot = ProjectRootManager.getInstance(project).fileIndex.getSourceRootForFile(sourceDirectory.virtualFile)
+        val rootManager = ModuleRootManager.getInstance(module)
+        val productionRoots = rootManager.getSourceRoots(false).toSet()
+        val testRoots = rootManager.getSourceRoots(true).filter { it !in productionRoots }.map { it.path }
+        val packageName = (psiClass.containingFile as? PsiClassOwner)?.packageName
+        // The module's test source root (creating the package directories), never next to production code when
+        // the module has one: before 0.1.3 a missing package directory under src/test sent the test to src/main,
+        // where test-scoped dependencies aren't on the classpath (found 2026-10-01).
+        val targetPath = TestLocation.targetPath(sourceDirectory.virtualFile.path, sourceRoot?.path, testRoots, packageName) { path ->
+            LocalFileSystem.getInstance().findFileByPath(path)?.isDirectory == true
+        }
 
+        var written: VirtualFile? = null
         WriteCommandAction.runWriteCommandAction(project, "Generate Test Skeleton", null, {
+            val testDirectory = if (targetPath != null) {
+                PsiManager.getInstance(project).findDirectory(VfsUtil.createDirectories(targetPath))
+            } else {
+                sourceDirectory
+            }
+            if (testDirectory == null) {
+                notify(project, "Could not create the test directory $targetPath.")
+                return@runWriteCommandAction
+            }
             val existing = testDirectory.findFile(fileName)
             if (existing != null) {
                 notify(project, "$fileName already exists -- not overwriting. Delete it first if you want to regenerate.")
@@ -103,26 +130,12 @@ class GenerateTestSkeletonAction : AnAction() {
             }
             val psiFile: PsiFile = PsiFileFactory.getInstance(project)
                 .createFileFromText(fileName, KotlinLanguage.INSTANCE, text)
-            testDirectory.add(psiFile)
+            written = (testDirectory.add(psiFile) as? PsiFile)?.virtualFile
             // Real success only -- never the "already exists" no-op above.
             ReviewPrompt.recordHit(project)
         })
-    }
-
-    /**
-     * Best-effort mirror of src/main -> src/test convention (Gradle/Maven
-     * standard layout). Falls back to the source file's own directory
-     * (handled by the caller) if no src/test sibling exists yet -- v1
-     * deliberately does not create new directories on the user's behalf,
-     * same "never touch more than what was explicitly asked" restraint
-     * as refactor-simulator's Apply/Discard split.
-     */
-    private fun resolveTestSourceDirectory(sourceDirectory: PsiDirectory): PsiDirectory? {
-        val path = sourceDirectory.virtualFile.path
-        val testPath = path.replace("/src/main/", "/src/test/")
-        if (testPath == path) return null
-        val testVirtualFile = com.intellij.openapi.vfs.LocalFileSystem.getInstance().findFileByPath(testPath) ?: return null
-        return PsiManager.getInstance(sourceDirectory.project).findDirectory(testVirtualFile)
+        // Show the result: before 0.1.3 the file was written silently and had to be found in the project tree.
+        written?.let { FileEditorManager.getInstance(project).openFile(it, true) }
     }
 
     /**

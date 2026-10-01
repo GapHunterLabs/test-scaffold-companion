@@ -4,18 +4,21 @@
     <name>Test Scaffold Companion</name>
     <vendor>Gap Hunter Labs</vendor>
     <description><![CDATA[
-        <p>Generates a real, compiling JUnit test skeleton for a Java or
-        Kotlin class -- one empty test method per public method, framework
-        already detected from your project's own dependencies and
-        imported correctly. Every skeleton is validated against an
-        in-memory PSI copy before anything is written to disk: if a
-        generated reference can't resolve, nothing gets written for that
-        method -- you get an honest TODO comment instead of a broken or
-        silently-empty test. The #1 complaint against every free
-        alternative in this space (Squaretest, TestMe, JUnitGenerator) is
-        generated code that doesn't compile or a test that "passes" by
-        asserting nothing; this plugin's whole design exists to not do
-        that.</p>
+        <p>Generates a compiling Kotlin JUnit test skeleton for a Java or
+        Kotlin class (your test sources need Kotlin) -- one test method per
+        public method, framework already detected from your project's own
+        dependencies and imported correctly, written under the module's
+        test source root and opened in the editor. The skeleton is parsed
+        in memory before anything is written (a syntax error writes
+        nothing), and it only contains calls that compile: on an
+        <code>instance</code> the test declares for you to assign, with
+        typed placeholder arguments. Anything it can't call safely -- an
+        object argument, a generic class -- gets an honest TODO comment
+        instead of a broken or silently-empty test. The #1 complaint
+        against every free alternative in this space (Squaretest, TestMe,
+        JUnitGenerator) is generated code that doesn't compile or a test
+        that "passes" by asserting nothing; this plugin's whole design
+        exists to not do that.</p>
         <p>100% local -- no network call, no account, no telemetry. PSI
         validation always runs off the EDT, same pattern as every other
         Gap Hunter Labs plugin.</p>
