@@ -40,7 +40,16 @@ object TestSkeletonWriter {
         val className = psiClass.name ?: "UnknownClass"
         val testClassName = "${className}Test"
         val mockPlan = MockFieldPlanner.plan(psiClass)
-        val renderedMethods = methods.map { method -> renderMethod(method, className, mockPlan) }
+        // The class as the test (same package) can refer to it: Outer.Inner for a nested class.
+        val typeRef = psiClass.qualifiedName?.let { fq ->
+            if (!packageName.isNullOrEmpty() && fq.startsWith("$packageName.")) fq.removePrefix("$packageName.") else fq
+        } ?: className
+        // Non-static calls go through an `instance` the test DECLARES (lateinit, assigned by the user): before 0.1.3
+        // they referenced an `instance` that was never declared, so the generated file didn't compile (found
+        // 2026-10-01). A generic class gets no declaration (a raw type isn't valid Kotlin) and no executable calls.
+        val needsInstance = methods.any { !it.hasModifierProperty(PsiModifier.STATIC) }
+        val instanceDeclared = needsInstance && !psiClass.hasTypeParameters()
+        val renderedMethods = methods.map { method -> renderMethod(method, typeRef, instanceDeclared) }
         val needsAssertNotNullImport = renderedMethods.any { it.usesAssertNotNull }
 
         val header = buildString {
@@ -57,7 +66,17 @@ object TestSkeletonWriter {
             appendLine()
             mockPlan.fieldDeclarations.forEach { appendLine("    $it") }
             if (mockPlan.fieldDeclarations.isNotEmpty()) appendLine()
+            if (instanceDeclared) {
+                val from = if (mockPlan.fieldDeclarations.isNotEmpty()) " (the mocks above are its constructor's dependencies)" else ""
+                appendLine("    // TODO(test-scaffold): assign a real or mocked $typeRef to `instance` before the tests run$from")
+                appendLine("    private lateinit var instance: $typeRef")
+                appendLine()
+            } else if (needsInstance) {
+                appendLine("    // TODO(test-scaffold): $typeRef is generic -- create an instance with concrete type arguments")
+                appendLine()
+            }
         }
+
         val body = renderedMethods.joinToString(separator = "\n") { it.text }
         val footer = "\n}\n"
         return header + body + footer
@@ -65,30 +84,34 @@ object TestSkeletonWriter {
 
     private data class RenderedMethod(val text: String, val usesAssertNotNull: Boolean)
 
-    private fun renderMethod(method: PsiMethod, className: String, mockPlan: MockFieldPlanner.Plan): RenderedMethod {
+    private fun renderMethod(method: PsiMethod, typeRef: String, instanceDeclared: Boolean): RenderedMethod {
         val testName = "test${method.name.replaceFirstChar { it.uppercase() }}"
-        val callArgs = method.parameterList.parameters.joinToString(", ") { defaultValueFor(it.type) }
+        val args = method.parameterList.parameters.map { defaultValueFor(it.type) }
+        val callArgs = args.joinToString(", ") { it ?: "null" }
         val isStatic = method.hasModifierProperty(PsiModifier.STATIC)
-        val receiver = if (isStatic) className else "instance"
+        val receiver = if (isStatic) typeRef else "instance"
         val call = "$receiver.${method.name}($callArgs)"
         val isVoid = method.returnType == PsiTypes.voidType()
         val inferred = AssertionInferrer.inferAssertion(method)
+        // Only code that compiles is emitted: a call needs a declared receiver and a typed placeholder for every
+        // argument (a `null` for an object parameter is left to the user in a TODO, never executed).
+        val executable = (isStatic || instanceDeclared) && args.all { it != null }
         var usesAssertNotNull = false
 
         val text = buildString {
             appendLine("    @Test")
             appendLine("    fun $testName() {")
-            if (!isStatic && mockPlan.fieldDeclarations.isEmpty()) {
-                appendLine("        // TODO(test-scaffold): assign a real or mocked $className to `instance` before calling $call")
-            }
             when {
-                inferred == InferredAssertion.NotNull -> {
+                inferred == InferredAssertion.NotNull && executable -> {
                     appendLine("        val result = $call")
                     appendLine("        assertNotNull(result)")
                     usesAssertNotNull = true
                 }
                 isVoid -> {
                     appendLine("        // TODO(test-scaffold): call $call and assert its observable side effect")
+                }
+                inferred == InferredAssertion.NotNull -> {
+                    appendLine("        // TODO(test-scaffold): call $call with real arguments and assert the result is not null")
                 }
                 else -> {
                     appendLine("        // TODO(test-scaffold): no safe default assertion for ${method.name}()'s return type -- fill in manually")
@@ -100,21 +123,20 @@ object TestSkeletonWriter {
     }
 
     /**
-     * A syntactically valid placeholder argument per parameter type --
-     * needed so the generated call itself compiles (Layer 1's own
-     * in-memory validation would otherwise flag every non-nullary method
-     * as a false positive syntax error). Deliberately minimal: 0 for
-     * numeric primitives, false for boolean, an empty string literal for
-     * String, null for anything else nullable. Not an attempt at
-     * meaningful test data -- that's a user decision this plugin never
-     * makes for them (section 0 of the plan: honest placeholders, never
-     * invented "real-looking" values that could be mistaken for actual
-     * test intent).
+     * A placeholder argument that compiles in Kotlin for this Java/Kotlin parameter type, or null when there is no
+     * safe one (any object type other than String). Typed literals: Kotlin doesn't widen an integer literal to
+     * Double/Float, so a `double` parameter needs `0.0` -- before 0.1.3 every numeric placeholder was `0`, which
+     * doesn't compile for those. Deliberately minimal, never meaningful test data (honest placeholders, never
+     * invented "real-looking" values that could be mistaken for actual test intent).
      */
-    private fun defaultValueFor(type: PsiType): String = when {
-        type == PsiTypes.booleanType() -> "false"
-        type is PsiPrimitiveType -> "0"
-        type.canonicalText == "java.lang.String" -> "\"\""
-        else -> "null"
+    internal fun defaultValueFor(type: PsiType): String? = when (type) {
+        PsiTypes.booleanType() -> "false"
+        PsiTypes.doubleType() -> "0.0"
+        PsiTypes.floatType() -> "0.0f"
+        PsiTypes.longType() -> "0L"
+        PsiTypes.charType() -> "' '"
+        is PsiPrimitiveType -> "0"
+        // "String" alone: an unresolved String (no JDK configured) still is the java.lang one in practice
+        else -> if (type.canonicalText == "java.lang.String" || type.canonicalText == "String") "\"\"" else null
     }
 }

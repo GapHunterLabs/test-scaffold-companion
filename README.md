@@ -2,9 +2,9 @@
 
 IntelliJ-family plugin (IntelliJ IDEA, Android Studio, and any
 IntelliJ-based IDE that bundles the Java and Kotlin plugins). Generates
-a real, compiling JUnit test skeleton for a Java or Kotlin class — one
-empty test method per public method, with your project's own test
-framework detected and imported correctly.
+a compiling **Kotlin** JUnit test skeleton for a Java or Kotlin class
+(your test sources need Kotlin) — one test method per public method,
+with your project's own test framework detected and imported correctly.
 
 ## Why it exists
 
@@ -23,10 +23,17 @@ JetBrains Marketplace reviews:
 
 None of the free competitors verify the code they generate before
 writing it to disk. This plugin does — every generated skeleton is
-parsed into an in-memory copy and checked for real syntax errors
-*before* it's ever offered as something to write. If it can't generate
-something safely, it says so with an honest `TODO` comment instead of
-handing you a broken test.
+parsed into an in-memory copy and checked for syntax errors *before*
+it's ever offered as something to write (a syntax error writes
+nothing). That check is syntax only, so the generator itself only emits
+code that compiles: calls go through an `instance` the test declares
+(`private lateinit var instance: YourClass`, with a `TODO` to assign
+it) and use typed placeholders (`0.0` for a `double`, `""` for a
+`String`). Anything it can't call safely — an object argument it would
+have to pass as `null`, a generic class — gets an honest `TODO` comment
+instead of a broken test. (Before 0.1.3 the calls referenced an
+`instance` that was never declared, and a `double` argument got `0`, so
+the generated file didn't compile.)
 
 ## Why built this way
 
@@ -56,10 +63,14 @@ handing you a broken test.
 ## Usage
 
 Right-click a class in the editor or the Project view → **Generate
-Test Skeleton**. The generated `<ClassName>Test.kt` file is written
-next to the class under `src/test` (mirroring your project's own
-`src/main` → `src/test` layout) if that directory already exists,
-or alongside the source file otherwise.
+Test Skeleton**. The generated `<ClassName>Test.kt` file is written to
+the class's package under the module's test source root (preferring the
+one that mirrors the class's own root, `src/main/java` →
+`src/test/java`), creating the package directories if needed, and
+opened in the editor. Only a module with no test source root at all
+gets the file next to the class. (Before 0.1.3 a missing package
+directory under `src/test` sent the test to `src/main`, where JUnit
+isn't on the classpath, and the file wasn't opened.)
 
 ## Free, forever
 

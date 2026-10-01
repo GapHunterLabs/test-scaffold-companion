@@ -55,7 +55,9 @@ class TestSkeletonWriterTest : BasePlatformTestCase() {
         assertFalse(text.contains("TODO(test-scaffold)"))
     }
 
-    fun testMarksAnInstanceMethodCallWithATodoForInstanceAssignment() {
+    // Regression (2026-10-01): `instance.greet()` was generated without any
+    // declaration of `instance`, so the test file didn't compile.
+    fun testDeclaresTheInstanceItCallsWithATodoToAssignIt() {
         val file = myFixture.configureByText(
             "Acme.java",
             """
@@ -70,7 +72,60 @@ class TestSkeletonWriterTest : BasePlatformTestCase() {
         val text = TestSkeletonWriter.render(psiClass, methods, TestFramework.JUNIT5, packageName = null)
 
         assertTrue(text.contains("TODO(test-scaffold): assign a real or mocked Acme to `instance`"))
-        assertTrue(text.contains("instance.greet()"))
+        assertTrue(text.contains("    private lateinit var instance: Acme"))
+        assertTrue(text.contains("val result = instance.greet()"))
+        assertTrue(text.indexOf("private lateinit var instance") < text.indexOf("instance.greet()"))
+    }
+
+    // Regression (2026-10-01): a double parameter got the placeholder `0`,
+    // which Kotlin doesn't accept for a Double.
+    fun testPlaceholdersAreTypedSoTheCallCompilesInKotlin() {
+        val file = myFixture.configureByText(
+            "Acme.java",
+            """
+            class Acme {
+                public static String format(double amount, float rate, long id, char sep, int n, boolean b, String s) { return ""; }
+            }
+            """.trimIndent(),
+        )
+        val psiClass = PsiTreeUtil.findChildOfType(file, PsiClass::class.java)!!
+        val text = TestSkeletonWriter.render(psiClass, PublicMethodCollector.collect(psiClass), TestFramework.JUNIT5, packageName = null)
+
+        assertTrue(text, text.contains("val result = Acme.format(0.0, 0.0f, 0L, ' ', 0, false, \"\")"))
+    }
+
+    fun testAnObjectParameterIsNeverExecutedWithNull() {
+        val file = myFixture.configureByText(
+            "Acme.java",
+            """
+            import java.util.List;
+            class Acme {
+                public String label(List<String> parts) { return ""; }
+            }
+            """.trimIndent(),
+        )
+        val psiClass = PsiTreeUtil.findChildOfType(file, PsiClass::class.java)!!
+        val text = TestSkeletonWriter.render(psiClass, PublicMethodCollector.collect(psiClass), TestFramework.JUNIT5, packageName = null)
+
+        assertFalse(text, text.contains("val result = instance.label(null)"))
+        assertTrue(text, text.contains("// TODO(test-scaffold): call instance.label(null) with real arguments"))
+    }
+
+    fun testAGenericClassGetsNoRawInstanceDeclaration() {
+        val file = myFixture.configureByText(
+            "Box.java",
+            """
+            class Box<T> {
+                public String name() { return ""; }
+            }
+            """.trimIndent(),
+        )
+        val psiClass = PsiTreeUtil.findChildOfType(file, PsiClass::class.java)!!
+        val text = TestSkeletonWriter.render(psiClass, PublicMethodCollector.collect(psiClass), TestFramework.JUNIT5, packageName = null)
+
+        assertFalse(text, text.contains("lateinit var instance"))
+        assertFalse(text, text.contains("val result = instance."))
+        assertTrue(text, text.contains("Box is generic"))
     }
 
     fun testOmitsPackageDeclarationWhenClassHasNoPackage() {

@@ -4,6 +4,26 @@
 
 ## [Unreleased]
 
+## [0.1.3]
+
+### Fixed
+
+- The generated test didn't compile: calls used an `instance` that was
+  never declared. The test now declares
+  `private lateinit var instance: YourClass` with a TODO to assign it
+  (a generic class gets a TODO instead).
+- A `double`, `float`, `long` or `char` argument got the placeholder
+  `0`, which Kotlin rejects; placeholders are now typed (`0.0`, `0.0f`,
+  `0L`, `' '`). A call that would need `null` for an object argument is
+  left as a TODO instead of being executed.
+- With a test source root but no package directory under it yet, the
+  test was written next to the class in `src/main`, where test
+  dependencies aren't on the classpath. The package directories are now
+  created under the module's test source root.
+- The generated file is opened in the editor.
+- The listing said each unresolved reference is replaced by a TODO; the
+  in-memory check is a syntax check, and the listing now says so.
+
 ## [0.1.2]
 
 ### Fixed
@@ -55,7 +75,8 @@
   mock generation, and honest per-method `TODO`s all verified against
   a real demo project.
 
-[Unreleased]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.2...HEAD
+[Unreleased]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.3...HEAD
+[0.1.3]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.2...0.1.3
 [0.1.2]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/GapHunterLabs/test-scaffold-companion/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/GapHunterLabs/test-scaffold-companion/commits/0.1.0
