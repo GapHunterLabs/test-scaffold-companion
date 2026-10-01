@@ -91,26 +91,37 @@ class GenerateTestSkeletonAction : AnAction() {
                     return@runReadAction
                 }
 
+                // Resolved here, in the background read action: the project file index is a slow operation the
+                // platform forbids on the EDT (its SEVERE "Slow operations are prohibited on EDT" fired when this
+                // ran inside writeToDisk, caught by the recorded demo 2026-10-01).
+                val targetPath = testTargetPath(project, module, psiClass)
                 ApplicationManager.getApplication().invokeLater {
-                    writeToDisk(project, module, psiClass, fileName, generatedText)
+                    writeToDisk(project, psiClass, fileName, generatedText, targetPath)
                 }
             }
         }
     }
 
-    private fun writeToDisk(project: com.intellij.openapi.project.Project, module: Module, psiClass: PsiClass, fileName: String, text: String) {
-        val sourceDirectory = psiClass.containingFile?.containingDirectory ?: return notify(project, "Could not resolve a directory to write the test into.")
+    /**
+     * The module's test source root (creating the package directories), never next to production code when the
+     * module has one: before 0.1.3 a missing package directory under src/test sent the test to src/main, where
+     * test-scoped dependencies aren't on the classpath (found 2026-10-01). Null when the module has no test root.
+     * Needs a read action; never call it on the EDT.
+     */
+    private fun testTargetPath(project: com.intellij.openapi.project.Project, module: Module, psiClass: PsiClass): String? {
+        val sourceDirectory = psiClass.containingFile?.containingDirectory ?: return null
         val sourceRoot = ProjectRootManager.getInstance(project).fileIndex.getSourceRootForFile(sourceDirectory.virtualFile)
         val rootManager = ModuleRootManager.getInstance(module)
         val productionRoots = rootManager.getSourceRoots(false).toSet()
         val testRoots = rootManager.getSourceRoots(true).filter { it !in productionRoots }.map { it.path }
         val packageName = (psiClass.containingFile as? PsiClassOwner)?.packageName
-        // The module's test source root (creating the package directories), never next to production code when
-        // the module has one: before 0.1.3 a missing package directory under src/test sent the test to src/main,
-        // where test-scoped dependencies aren't on the classpath (found 2026-10-01).
-        val targetPath = TestLocation.targetPath(sourceDirectory.virtualFile.path, sourceRoot?.path, testRoots, packageName) { path ->
+        return TestLocation.targetPath(sourceDirectory.virtualFile.path, sourceRoot?.path, testRoots, packageName) { path ->
             LocalFileSystem.getInstance().findFileByPath(path)?.isDirectory == true
         }
+    }
+
+    private fun writeToDisk(project: com.intellij.openapi.project.Project, psiClass: PsiClass, fileName: String, text: String, targetPath: String?) {
+        val sourceDirectory = psiClass.containingFile?.containingDirectory ?: return notify(project, "Could not resolve a directory to write the test into.")
 
         var written: VirtualFile? = null
         WriteCommandAction.runWriteCommandAction(project, "Generate Test Skeleton", null, {
