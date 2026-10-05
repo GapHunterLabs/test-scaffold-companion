@@ -88,10 +88,12 @@ evidence-anchored pick. No monetization plan exists yet — that decision waits 
 real usage signal, same discipline already applied to Refactor
 Simulator.
 
-## Enterprise / Team Licensing
+## Support
 
-Need enterprise features, custom rules, or team licensing? Contact us at
-**gaphunterlabs@gmail.com**.
+- **Bugs and feature requests:** [GitHub Issues](https://github.com/GapHunterLabs/test-scaffold-companion/issues)
+- **Questions, or custom rules for a team's codebase:** **gaphunterlabs@gmail.com**
+- **Security vulnerabilities:** report privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
+- **Privacy and network behavior:** [PRIVACY.md](PRIVACY.md)
 
 ## Development
 
